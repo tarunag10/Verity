@@ -51,6 +51,23 @@ public struct DocumentMetadata: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
+public struct ImportProgress: Hashable, Sendable {
+    public var completed: Int
+    public var total: Int
+    public var currentFileName: String?
+
+    public init(completed: Int, total: Int, currentFileName: String? = nil) {
+        self.completed = completed
+        self.total = total
+        self.currentFileName = currentFileName
+    }
+
+    public var fractionCompleted: Double {
+        guard total > 0 else { return 0 }
+        return min(1, max(0, Double(completed) / Double(total)))
+    }
+}
+
 public struct ParsedPage: Identifiable, Codable, Hashable, Sendable {
     public var id: UUID
     public var pageNumber: Int

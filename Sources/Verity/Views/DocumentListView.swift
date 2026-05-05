@@ -8,6 +8,7 @@ struct DocumentListView: View {
     @State private var isFolderImporterPresented = false
     @State private var searchText = ""
     @State private var importError: String?
+    @State private var importTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,7 +26,7 @@ struct DocumentListView: View {
             allowedContentTypes: [.pdf, .plainText, .text, .rtf, .markdown],
             allowsMultipleSelection: true
         ) { result in
-            Task {
+            startImport {
                 await importFiles(result)
             }
         }
@@ -34,7 +35,7 @@ struct DocumentListView: View {
             allowedContentTypes: [.folder],
             allowsMultipleSelection: false
         ) { result in
-            Task {
+            startImport {
                 await importFolder(result)
             }
         }
@@ -78,6 +79,29 @@ struct DocumentListView: View {
                     .font(.caption)
                     .foregroundStyle(.red)
             }
+
+            if let progress = store.importProgress {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(importStatusText(progress))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Spacer()
+                        Button {
+                            importTask?.cancel()
+                            store.clearImportProgress()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                        }
+                        .buttonStyle(.plain)
+                        .help("Cancel import")
+                    }
+
+                    ProgressView(value: progress.fractionCompleted)
+                        .progressViewStyle(.linear)
+                }
+            }
         }
         .padding()
     }
@@ -117,6 +141,7 @@ struct DocumentListView: View {
     private func importFiles(_ result: Result<[URL], Error>) async {
         do {
             for url in try result.get() {
+                try Task.checkCancellation()
                 let didStartAccessing = url.startAccessingSecurityScopedResource()
                 defer {
                     if didStartAccessing {
@@ -126,6 +151,8 @@ struct DocumentListView: View {
                 try await store.importDocument(url)
             }
             importError = nil
+        } catch is CancellationError {
+            importError = "Import canceled."
         } catch {
             importError = error.localizedDescription
         }
@@ -142,9 +169,24 @@ struct DocumentListView: View {
             }
             try await store.importFolder(url)
             importError = nil
+        } catch is CancellationError {
+            importError = "Import canceled."
         } catch {
             importError = error.localizedDescription
         }
+    }
+
+    private func startImport(_ operation: @escaping @MainActor () async -> Void) {
+        importTask?.cancel()
+        importTask = Task {
+            await operation()
+            importTask = nil
+        }
+    }
+
+    private func importStatusText(_ progress: ImportProgress) -> String {
+        let current = progress.currentFileName.map { " - \($0)" } ?? ""
+        return "Importing \(progress.completed) of \(progress.total)\(current)"
     }
 
     private func pageLabel(_ page: Int?) -> String {

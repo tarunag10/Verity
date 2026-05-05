@@ -11,6 +11,7 @@ public final class LibraryStore: ObservableObject {
     @Published public var modelSettings: ModelSettings
     @Published public private(set) var templateResults: [TemplateRunResult]
     @Published public private(set) var evaluationReports: [EvaluationReport]
+    @Published public private(set) var importProgress: ImportProgress?
 
     public let storageDirectory: URL
     private let parser: DocumentParser
@@ -46,6 +47,7 @@ public final class LibraryStore: ObservableObject {
         self.modelSettings = ModelSettings()
         self.templateResults = []
         self.evaluationReports = []
+        self.importProgress = nil
         try? FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
         load()
     }
@@ -59,24 +61,57 @@ public final class LibraryStore: ObservableObject {
     }
 
     public func importDocument(_ fileURL: URL) async throws {
-        var parsed = try parser.parse(fileURL: fileURL)
-        parsed.metadata.status = .indexing
-        documents.append(parsed.metadata)
-        persist()
-
-        let newChunks = chunker.chunk(parsed)
-        parsed.metadata.status = parsed.status
-        if let index = documents.firstIndex(where: { $0.id == parsed.id }) {
-            documents[index] = parsed.metadata
-        }
-        chunks.append(contentsOf: newChunks)
-        selectedDocumentID = parsed.id
-        persist()
+        try await importDocument(fileURL, persistAfterImport: true)
     }
 
     public func importFolder(_ folderURL: URL) async throws {
-        for fileURL in try supportedFileURLs(in: folderURL) {
-            try await importDocument(fileURL)
+        let fileURLs = try await Task.detached(priority: .userInitiated) {
+            try Self.supportedFileURLs(in: folderURL)
+        }.value
+
+        importProgress = ImportProgress(completed: 0, total: fileURLs.count)
+        defer { importProgress = nil }
+
+        for (offset, fileURL) in fileURLs.enumerated() {
+            try Task.checkCancellation()
+            importProgress = ImportProgress(
+                completed: offset,
+                total: fileURLs.count,
+                currentFileName: fileURL.lastPathComponent
+            )
+            try await importDocument(fileURL, persistAfterImport: false)
+            importProgress = ImportProgress(
+                completed: offset + 1,
+                total: fileURLs.count,
+                currentFileName: fileURL.lastPathComponent
+            )
+        }
+
+        persist()
+    }
+
+    public func clearImportProgress() {
+        importProgress = nil
+    }
+
+    private func importDocument(_ fileURL: URL, persistAfterImport: Bool) async throws {
+        let parser = parser
+        let chunker = chunker
+        let (parsed, newChunks) = try await Task.detached(priority: .userInitiated) {
+            let parsed = try parser.parse(fileURL: fileURL)
+            return (parsed, chunker.chunk(parsed))
+        }.value
+
+        if let index = documents.firstIndex(where: { $0.id == parsed.id }) {
+            documents[index] = parsed.metadata
+        } else {
+            documents.append(parsed.metadata)
+        }
+        chunks.append(contentsOf: newChunks)
+        selectedDocumentID = parsed.id
+
+        if persistAfterImport {
+            persist()
         }
     }
 
@@ -199,7 +234,7 @@ public final class LibraryStore: ObservableObject {
         scope.isEmpty ? chunks : chunks.filter { scope.contains($0.documentID) }
     }
 
-    private func supportedFileURLs(in folderURL: URL) throws -> [URL] {
+    private nonisolated static func supportedFileURLs(in folderURL: URL) throws -> [URL] {
         let supported = Set(["pdf", "txt", "md", "markdown", "rtf"])
         let contents = try FileManager.default.contentsOfDirectory(
             at: folderURL,
