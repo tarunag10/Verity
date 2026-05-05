@@ -11,8 +11,14 @@ struct SidebarView: View {
                 Label("Documents", systemImage: "doc.text.magnifyingglass")
                     .tag(AppSection.documents)
 
-                Label("Privacy", systemImage: store.privacySettings.localOnlyMode ? "lock.shield" : "exclamationmark.shield")
-                    .tag(AppSection.privacy)
+                Label("Templates", systemImage: "tablecells")
+                    .tag(AppSection.templates)
+
+                Label("Evaluation", systemImage: "checklist.checked")
+                    .tag(AppSection.evaluation)
+
+                Label("Settings", systemImage: store.privacySettings.localOnlyMode ? "lock.shield" : "gearshape")
+                    .tag(AppSection.settings)
             }
 
             Section("Chats") {

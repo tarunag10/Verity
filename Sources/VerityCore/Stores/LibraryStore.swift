@@ -8,11 +8,16 @@ public final class LibraryStore: ObservableObject {
     @Published public var activeChatID: UUID?
     @Published public var selectedDocumentID: UUID?
     @Published public var privacySettings: PrivacySettings
+    @Published public var modelSettings: ModelSettings
+    @Published public private(set) var templateResults: [TemplateRunResult]
+    @Published public private(set) var evaluationReports: [EvaluationReport]
 
     public let storageDirectory: URL
     private let parser: DocumentParser
     private let chunker: DocumentChunker
     private let engine: LocalRAGEngine
+    private let templateEngine: TemplateEngine
+    private let evaluationEngine: EvaluationEngine
 
     private var stateURL: URL {
         storageDirectory.appending(path: "verity-library.json")
@@ -22,18 +27,25 @@ public final class LibraryStore: ObservableObject {
         storageDirectory: URL,
         parser: DocumentParser = DocumentParser(),
         chunker: DocumentChunker = DocumentChunker(),
-        engine: LocalRAGEngine = LocalRAGEngine()
+        engine: LocalRAGEngine = LocalRAGEngine(),
+        templateEngine: TemplateEngine = TemplateEngine(),
+        evaluationEngine: EvaluationEngine = EvaluationEngine()
     ) {
         self.storageDirectory = storageDirectory
         self.parser = parser
         self.chunker = chunker
         self.engine = engine
+        self.templateEngine = templateEngine
+        self.evaluationEngine = evaluationEngine
         let initialChat = ChatThread()
         self.documents = []
         self.chunks = []
         self.chats = [initialChat]
         self.activeChatID = initialChat.id
         self.privacySettings = PrivacySettings()
+        self.modelSettings = ModelSettings()
+        self.templateResults = []
+        self.evaluationReports = []
         try? FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
         load()
     }
@@ -62,6 +74,12 @@ public final class LibraryStore: ObservableObject {
         persist()
     }
 
+    public func importFolder(_ folderURL: URL) async throws {
+        for fileURL in try supportedFileURLs(in: folderURL) {
+            try await importDocument(fileURL)
+        }
+    }
+
     public func deleteDocument(id: UUID) {
         documents.removeAll { $0.id == id }
         chunks.removeAll { $0.documentID == id }
@@ -72,6 +90,9 @@ public final class LibraryStore: ObservableObject {
         }
         if selectedDocumentID == id {
             selectedDocumentID = documents.first?.id
+        }
+        templateResults.removeAll { result in
+            !Set(result.documentNames).isDisjoint(with: [documents.first { $0.id == id }?.fileName].compactMap { $0 })
         }
         persist()
     }
@@ -115,12 +136,87 @@ public final class LibraryStore: ObservableObject {
         persist()
     }
 
+    public func updateModelSettings(_ settings: ModelSettings) {
+        modelSettings = settings
+        persist()
+    }
+
+    @discardableResult
+    public func runTemplate(_ templateID: TemplateID, documentIDs: Set<UUID>) -> TemplateRunResult {
+        let selectedDocuments = documentIDs.isEmpty ? documents : documents.filter { documentIDs.contains($0.id) }
+        let selectedIDs = Set(selectedDocuments.map(\.id))
+        let selectedChunks = chunks.filter { selectedIDs.isEmpty || selectedIDs.contains($0.documentID) }
+        let result = templateEngine.run(templateID: templateID, documents: selectedDocuments, chunks: selectedChunks)
+        templateResults.insert(result, at: 0)
+        persist()
+        return result
+    }
+
+    public func exportTemplateResultsCSV() -> String {
+        templateEngine.exportCSV(results: templateResults)
+    }
+
+    @discardableResult
+    public func runEvaluation(questions: [String]? = nil) -> EvaluationReport {
+        let questions = questions ?? LibraryStore.defaultEvaluationQuestions
+        let report = evaluationEngine.evaluate(questions: questions, chunks: chunks)
+        evaluationReports.insert(report, at: 0)
+        persist()
+        return report
+    }
+
+    public func deleteAllLocalData() {
+        documents = []
+        chunks = []
+        chats = [ChatThread()]
+        activeChatID = chats.first?.id
+        selectedDocumentID = nil
+        templateResults = []
+        evaluationReports = []
+        persist()
+    }
+
     public func documentURL(for id: UUID) -> URL? {
         documents.first { $0.id == id }?.fileURL
     }
 
+    public func sourceReference(for citation: Citation) -> SourceReference? {
+        guard let document = documents.first(where: { $0.id == citation.documentID }) else {
+            return nil
+        }
+
+        return SourceReference(
+            documentID: document.id,
+            title: document.fileName,
+            fileURL: document.fileURL,
+            fileType: document.fileType,
+            pageNumber: citation.pageNumber,
+            snippet: citation.snippet
+        )
+    }
+
     private func scopedChunks(_ scope: Set<UUID>) -> [DocumentChunk] {
         scope.isEmpty ? chunks : chunks.filter { scope.contains($0.documentID) }
+    }
+
+    private func supportedFileURLs(in folderURL: URL) throws -> [URL] {
+        let supported = Set(["pdf", "txt", "md", "markdown", "rtf"])
+        let contents = try FileManager.default.contentsOfDirectory(
+            at: folderURL,
+            includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        var files: [URL] = []
+        for url in contents {
+            let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey])
+            if values.isDirectory == true {
+                files.append(contentsOf: try supportedFileURLs(in: url))
+            } else if values.isRegularFile == true, supported.contains(url.pathExtension.lowercased()) {
+                files.append(url)
+            }
+        }
+        return files.sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
     private func append(messages: [ChatMessage], question: String, scope: Set<UUID>) {
@@ -144,7 +240,10 @@ public final class LibraryStore: ObservableObject {
             chats: chats,
             activeChatID: activeChatID,
             selectedDocumentID: selectedDocumentID,
-            privacySettings: privacySettings
+            privacySettings: privacySettings,
+            modelSettings: modelSettings,
+            templateResults: templateResults,
+            evaluationReports: evaluationReports
         )
         do {
             let data = try JSONEncoder.verity.encode(snapshot)
@@ -165,7 +264,18 @@ public final class LibraryStore: ObservableObject {
         activeChatID = snapshot.activeChatID ?? chats.first?.id
         selectedDocumentID = snapshot.selectedDocumentID
         privacySettings = snapshot.privacySettings
+        modelSettings = snapshot.modelSettings ?? ModelSettings()
+        templateResults = snapshot.templateResults ?? []
+        evaluationReports = snapshot.evaluationReports ?? []
     }
+
+    public static let defaultEvaluationQuestions = [
+        "What is the main obligation?",
+        "What are the payment terms?",
+        "What dates or deadlines are mentioned?",
+        "What risks or warnings are described?",
+        "What information is not available in the documents?"
+    ]
 }
 
 private struct LibrarySnapshot: Codable {
@@ -175,6 +285,9 @@ private struct LibrarySnapshot: Codable {
     var activeChatID: UUID?
     var selectedDocumentID: UUID?
     var privacySettings: PrivacySettings
+    var modelSettings: ModelSettings?
+    var templateResults: [TemplateRunResult]?
+    var evaluationReports: [EvaluationReport]?
 }
 
 private extension JSONEncoder {

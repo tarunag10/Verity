@@ -10,8 +10,8 @@ struct PrivacySettingsView: View {
                 Toggle("Local-only mode", isOn: settingsBinding(\.localOnlyMode))
                 Toggle("Telemetry", isOn: settingsBinding(\.telemetryEnabled))
                 LabeledContent("Sync") {
-                    Text(store.privacySettings.syncEnabled ? "Enabled" : "Off by default")
-                        .foregroundStyle(store.privacySettings.syncEnabled ? .orange : .secondary)
+                    Text("Not configured")
+                        .foregroundStyle(.secondary)
                 }
                 LabeledContent("Storage") {
                     Text(store.storageDirectory.path(percentEncoded: false))
@@ -23,7 +23,7 @@ struct PrivacySettingsView: View {
 
             Section("Local Engine") {
                 LabeledContent("Model") {
-                    Text(store.privacySettings.modelName)
+                    Text(store.modelSettings.retrievalEngine)
                         .foregroundStyle(.secondary)
                 }
                 LabeledContent("Documents indexed") {
@@ -34,12 +34,8 @@ struct PrivacySettingsView: View {
                 }
             }
 
-            Section("Pro Extension Points") {
-                Toggle("OCR for scanned documents", isOn: settingsBinding(\.ocrEnabled))
-                    .disabled(true)
-                Toggle("Encrypted sync", isOn: settingsBinding(\.syncEnabled))
-                    .disabled(true)
-                Text("OCR, sync, templates, licensing, and MLX model management are wired as explicit product surfaces for the next implementation phase.")
+            Section("Local Extensions") {
+                Text("OCR and semantic model adapters can be added without changing the local-first document library.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

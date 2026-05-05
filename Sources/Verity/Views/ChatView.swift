@@ -13,6 +13,7 @@ struct ChatView: View {
     @ObservedObject var store: LibraryStore
     @State private var prompt = ""
     @State private var scopeMode: ChatScopeMode = .library
+    @State private var selectedSource: SourceReference?
 
     private var activeMessages: [ChatMessage] {
         store.activeChat?.messages ?? []
@@ -26,12 +27,22 @@ struct ChatView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            toolbar
-            Divider()
-            messageList
-            Divider()
-            composer
+        HSplitView {
+            VStack(spacing: 0) {
+                toolbar
+                Divider()
+                messageList
+                Divider()
+                composer
+            }
+            .frame(minWidth: 460)
+
+            if let selectedSource {
+                DocumentViewerView(source: selectedSource) {
+                    self.selectedSource = nil
+                }
+                .frame(minWidth: 380, idealWidth: 460)
+            }
         }
         .navigationTitle("Chat")
     }
@@ -139,8 +150,7 @@ struct ChatView: View {
     }
 
     private func openCitation(_ citation: Citation) {
-        guard let url = store.documentURL(for: citation.documentID) else { return }
-        NSWorkspace.shared.open(url)
+        selectedSource = store.sourceReference(for: citation)
     }
 }
 

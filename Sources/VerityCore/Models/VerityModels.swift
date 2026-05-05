@@ -110,6 +110,34 @@ public struct Citation: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
+public struct SourceReference: Identifiable, Codable, Hashable, Sendable {
+    public var id: UUID
+    public var documentID: UUID
+    public var title: String
+    public var fileURL: URL
+    public var fileType: String
+    public var pageNumber: Int?
+    public var snippet: String
+
+    public init(
+        id: UUID = UUID(),
+        documentID: UUID,
+        title: String,
+        fileURL: URL,
+        fileType: String,
+        pageNumber: Int?,
+        snippet: String
+    ) {
+        self.id = id
+        self.documentID = documentID
+        self.title = title
+        self.fileURL = fileURL
+        self.fileType = fileType
+        self.pageNumber = pageNumber
+        self.snippet = snippet
+    }
+}
+
 public struct SearchResult: Identifiable, Hashable, Sendable {
     public var id: UUID { chunk.id }
     public var chunk: DocumentChunk
@@ -183,22 +211,150 @@ public struct ChatThread: Identifiable, Codable, Hashable, Sendable {
 
 public struct PrivacySettings: Codable, Hashable, Sendable {
     public var localOnlyMode: Bool
-    public var syncEnabled: Bool
     public var telemetryEnabled: Bool
-    public var ocrEnabled: Bool
-    public var modelName: String
 
     public init(
         localOnlyMode: Bool = true,
-        syncEnabled: Bool = false,
-        telemetryEnabled: Bool = false,
-        ocrEnabled: Bool = false,
-        modelName: String = "Local lexical MVP engine"
+        telemetryEnabled: Bool = false
     ) {
         self.localOnlyMode = localOnlyMode
-        self.syncEnabled = syncEnabled
         self.telemetryEnabled = telemetryEnabled
-        self.ocrEnabled = ocrEnabled
-        self.modelName = modelName
+    }
+}
+
+public enum TemplateID: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case invoiceExtraction
+    case contractReview
+    case manualTroubleshooting
+    case researchPaperSummary
+    case policyReview
+    case keyDates
+    case compareDocuments
+
+    public var id: String { rawValue }
+}
+
+public struct TemplateField: Identifiable, Codable, Hashable, Sendable {
+    public var id: String { key }
+    public var key: String
+    public var label: String
+    public var prompt: String
+
+    public init(key: String, label: String, prompt: String) {
+        self.key = key
+        self.label = label
+        self.prompt = prompt
+    }
+}
+
+public struct TemplateDefinition: Identifiable, Codable, Hashable, Sendable {
+    public var id: TemplateID
+    public var name: String
+    public var summary: String
+    public var fields: [TemplateField]
+
+    public init(id: TemplateID, name: String, summary: String, fields: [TemplateField]) {
+        self.id = id
+        self.name = name
+        self.summary = summary
+        self.fields = fields
+    }
+}
+
+public struct ExtractedField: Identifiable, Codable, Hashable, Sendable {
+    public var id: String { key }
+    public var key: String
+    public var label: String
+    public var value: String
+    public var citation: Citation?
+
+    public init(key: String, label: String, value: String, citation: Citation?) {
+        self.key = key
+        self.label = label
+        self.value = value
+        self.citation = citation
+    }
+}
+
+public struct TemplateRunResult: Identifiable, Codable, Hashable, Sendable {
+    public var id: UUID
+    public var templateID: TemplateID
+    public var templateName: String
+    public var documentNames: [String]
+    public var fields: [ExtractedField]
+    public var createdAt: Date
+
+    public init(
+        id: UUID = UUID(),
+        templateID: TemplateID,
+        templateName: String,
+        documentNames: [String],
+        fields: [ExtractedField],
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        self.templateID = templateID
+        self.templateName = templateName
+        self.documentNames = documentNames
+        self.fields = fields
+        self.createdAt = createdAt
+    }
+}
+
+public enum EvaluationStatus: String, Codable, Hashable, Sendable {
+    case answered
+    case notFound
+}
+
+public struct EvaluationItem: Identifiable, Codable, Hashable, Sendable {
+    public var id: UUID
+    public var question: String
+    public var status: EvaluationStatus
+    public var answer: String
+    public var citations: [Citation]
+
+    public init(id: UUID = UUID(), question: String, status: EvaluationStatus, answer: String, citations: [Citation]) {
+        self.id = id
+        self.question = question
+        self.status = status
+        self.answer = answer
+        self.citations = citations
+    }
+}
+
+public struct EvaluationReport: Identifiable, Codable, Hashable, Sendable {
+    public var id: UUID
+    public var items: [EvaluationItem]
+    public var createdAt: Date
+
+    public init(id: UUID = UUID(), items: [EvaluationItem], createdAt: Date = Date()) {
+        self.id = id
+        self.items = items
+        self.createdAt = createdAt
+    }
+}
+
+public struct ModelSettings: Codable, Hashable, Sendable {
+    public var retrievalEngine: String
+    public var answerEngine: String
+    public var modelRuntime: String
+    public var hardwareSummary: String
+    public var languageModelIdentifier: String
+    public var embeddingModelIdentifier: String
+
+    public init(
+        retrievalEngine: String = "Native MLX embeddings with lexical fallback",
+        answerEngine: String = "Native MLX chat model with cited prompts",
+        modelRuntime: String = "MLX Swift in-process runtime",
+        hardwareSummary: String = "Apple Silicon recommended",
+        languageModelIdentifier: String = "mlx-community/Qwen3-4B-4bit",
+        embeddingModelIdentifier: String = "sentence-transformers/all-MiniLM-L6-v2"
+    ) {
+        self.retrievalEngine = retrievalEngine
+        self.answerEngine = answerEngine
+        self.modelRuntime = modelRuntime
+        self.hardwareSummary = hardwareSummary
+        self.languageModelIdentifier = languageModelIdentifier
+        self.embeddingModelIdentifier = embeddingModelIdentifier
     }
 }

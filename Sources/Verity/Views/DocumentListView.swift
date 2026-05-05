@@ -5,6 +5,7 @@ import VerityCore
 struct DocumentListView: View {
     @ObservedObject var store: LibraryStore
     @State private var isImporterPresented = false
+    @State private var isFolderImporterPresented = false
     @State private var searchText = ""
     @State private var importError: String?
 
@@ -28,6 +29,15 @@ struct DocumentListView: View {
                 await importFiles(result)
             }
         }
+        .fileImporter(
+            isPresented: $isFolderImporterPresented,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+        ) { result in
+            Task {
+                await importFolder(result)
+            }
+        }
     }
 
     private var header: some View {
@@ -40,6 +50,11 @@ struct DocumentListView: View {
                     isImporterPresented = true
                 } label: {
                     Label("Import", systemImage: "tray.and.arrow.down")
+                }
+                Button {
+                    isFolderImporterPresented = true
+                } label: {
+                    Label("Folder", systemImage: "folder.badge.plus")
                 }
             }
 
@@ -110,6 +125,22 @@ struct DocumentListView: View {
                 }
                 try await store.importDocument(url)
             }
+            importError = nil
+        } catch {
+            importError = error.localizedDescription
+        }
+    }
+
+    private func importFolder(_ result: Result<[URL], Error>) async {
+        do {
+            guard let url = try result.get().first else { return }
+            let didStartAccessing = url.startAccessingSecurityScopedResource()
+            defer {
+                if didStartAccessing {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            try await store.importFolder(url)
             importError = nil
         } catch {
             importError = error.localizedDescription

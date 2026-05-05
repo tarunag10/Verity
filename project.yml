@@ -1,0 +1,143 @@
+name: Verity
+
+options:
+  minimumXcodeGenVersion: 2.41.0
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGNING_ALLOWED: "NO"
+    DEVELOPMENT_TEAM: ""
+
+packages:
+  mlx-swift:
+    url: https://github.com/ml-explore/mlx-swift.git
+    from: 0.31.3
+  mlx-swift-lm:
+    url: https://github.com/ml-explore/mlx-swift-lm.git
+    from: 3.31.3
+  swift-tokenizers-mlx:
+    url: https://github.com/DePasqualeOrg/swift-tokenizers-mlx.git
+    from: 0.1.0
+  swift-hf-api-mlx:
+    url: https://github.com/DePasqualeOrg/swift-hf-api-mlx.git
+    from: 0.1.0
+  swift-jinja:
+    url: https://github.com/DePasqualeOrg/swift-jinja.git
+    from: 0.2.0
+  yyjson:
+    url: https://github.com/ibireme/yyjson.git
+    exactVersion: 0.12.0
+
+targets:
+  VerityCore:
+    type: framework
+    platform: macOS
+    sources:
+      - path: Sources/VerityCore
+    info:
+      path: Generated/VerityCore-Info.plist
+      properties:
+        CFBundleIdentifier: com.tarunag10.VerityCore
+        CFBundleName: VerityCore
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tarunag10.VerityCore
+
+  VerityMLX:
+    type: framework
+    platform: macOS
+    sources:
+      - path: Sources/VerityMLX
+    dependencies:
+      - target: VerityCore
+      - package: mlx-swift
+        product: MLX
+      - package: mlx-swift-lm
+        product: MLXEmbedders
+      - package: mlx-swift-lm
+        product: MLXLLM
+      - package: mlx-swift-lm
+        product: MLXLMCommon
+      - package: swift-hf-api-mlx
+        product: MLXEmbeddersHFAPI
+      - package: swift-hf-api-mlx
+        product: MLXLMHFAPI
+      - package: swift-tokenizers-mlx
+        product: MLXEmbeddersTokenizers
+      - package: swift-tokenizers-mlx
+        product: MLXLMTokenizers
+    info:
+      path: Generated/VerityMLX-Info.plist
+      properties:
+        CFBundleIdentifier: com.tarunag10.VerityMLX
+        CFBundleName: VerityMLX
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tarunag10.VerityMLX
+
+  Verity:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/Verity
+    dependencies:
+      - target: VerityCore
+      - target: VerityMLX
+    info:
+      path: Generated/Verity-Info.plist
+      properties:
+        CFBundleIdentifier: com.tarunag10.Verity
+        CFBundleName: Verity
+        CFBundleDisplayName: Verity
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: "14.0"
+        NSPrincipalClass: NSApplication
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tarunag10.Verity
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+
+  VerityCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/VerityCoreTests
+    dependencies:
+      - target: VerityCore
+    info:
+      path: Generated/VerityCoreTests-Info.plist
+      properties:
+        CFBundleIdentifier: com.tarunag10.VerityCoreTests
+        CFBundleName: VerityCoreTests
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tarunag10.VerityCoreTests
+
+schemes:
+  Verity:
+    build:
+      targets:
+        Verity: all
+        VerityMLX: all
+        VerityCoreTests: [test]
+    run:
+      config: Debug
+      executable: Verity
+    test:
+      config: Debug
+      targets:
+        - VerityCoreTests

@@ -3,6 +3,9 @@ import VerityCore
 
 enum AppSection: Hashable {
     case documents
+    case templates
+    case evaluation
+    case settings
     case chat(UUID)
     case privacy
 }
@@ -14,6 +17,9 @@ struct ContentView: View {
     private var selectedSection: Binding<AppSection?> {
         Binding {
             if selectedSectionData == "documents" { return .documents }
+            if selectedSectionData == "templates" { return .templates }
+            if selectedSectionData == "evaluation" { return .evaluation }
+            if selectedSectionData == "settings" { return .settings }
             if selectedSectionData == "privacy" { return .privacy }
             if let id = UUID(uuidString: selectedSectionData) { return .chat(id) }
             return .documents
@@ -21,6 +27,12 @@ struct ContentView: View {
             switch value {
             case .documents:
                 selectedSectionData = "documents"
+            case .templates:
+                selectedSectionData = "templates"
+            case .evaluation:
+                selectedSectionData = "evaluation"
+            case .settings:
+                selectedSectionData = "settings"
             case .privacy:
                 selectedSectionData = "privacy"
             case .chat(let id):
@@ -45,8 +57,12 @@ struct ContentView: View {
     @ViewBuilder
     private var detailView: some View {
         switch selectedSection.wrappedValue {
-        case .privacy:
-            PrivacySettingsView(store: store)
+        case .templates:
+            TemplatesView(store: store)
+        case .evaluation:
+            EvaluationView(store: store)
+        case .settings, .privacy:
+            SettingsCenterView(store: store)
         default:
             ChatView(store: store)
         }
