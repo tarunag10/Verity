@@ -1,28 +1,43 @@
 # Verity
 
-Verity is a local-first private document assistant for macOS, based on the PRD in `verity_local_private_document_assistant_prd.md`.
+Verity is a local-first private document assistant for macOS. It helps you import, search, summarize, and extract structured answers from local documents while keeping the document workflow on your machine by default.
 
-This scaffold implements the MVP foundation:
+The app is built with Swift, SwiftUI, Swift Package Manager, and an Xcode project generated from `project.yml`.
+
+## Features
 
 - Native SwiftUI macOS app.
-- Local document library and import.
-- Text extraction for PDFs, Markdown, plain text, and RTF.
-- Local chunking, search, extractive Q&A, summaries, and citations.
-- Local JSON persistence.
-- Privacy dashboard with local-only defaults.
-- In-app citation preview and PDF/text source viewer.
-- Built-in templates for invoice extraction, contract review, manuals, research papers, policies, key dates, and document comparison.
+- Local document library and folder import.
+- Text extraction for PDF, Markdown, plain text, and RTF files.
+- Local chunking, lexical retrieval, extractive Q&A, summaries, and citations.
+- Source previews with citation snippets and highlight ranges.
+- Built-in templates for invoices, contract review, manuals, research papers, policies, key dates, and document comparison.
 - Structured extraction with field-level citations and CSV export.
-- Recursive folder import for supported local document types.
+- Collections for scoping searches and workflows.
 - Local evaluation checks for cited answers and honest not-found behavior.
-- Product settings surfaces for local AI engine status, document processing, telemetry, and data deletion.
-- Extension points for MLX embeddings/generation, OCR, and templates.
+- Privacy dashboard with local-only defaults.
+- Accessibility-focused UI surfaces and keyboard/VoiceOver-friendly controls.
+- Extension points for MLX embeddings/generation, OCR, and custom templates.
+
+## Current Status
+
+Verity is an early-stage native macOS project. The deterministic retrieval engine is intentionally local and transparent so the app works without cloud services or required model downloads.
+
+Production MLX embeddings/generation and OCR can be implemented behind the existing core interfaces when those integrations are selected.
+
+## Requirements
+
+- macOS 14 or later.
+- Xcode 16 or newer recommended.
+- Swift 6.2 toolchain.
 
 ## Run
 
 ```bash
 ./script/build_and_run.sh
 ```
+
+You can also open `Verity.xcodeproj` in Xcode and run the `Verity` scheme.
 
 ## Test
 
@@ -36,8 +51,33 @@ swift test
 swift build
 ```
 
-## MVP Boundaries
+## Project Structure
 
-The current RAG engine is intentionally local and deterministic. It uses lexical retrieval, deterministic extraction, and extractive answer assembly so the app is usable without cloud services or bundled model downloads.
+```text
+Sources/
+  Verity/        SwiftUI macOS app target
+  VerityCore/    Core models, parsing, retrieval, templates, persistence
+  VerityMLX/     MLX runtime integration surface
+Tests/
+  VerityCoreTests/
+docs/
+  distribution/  Packaging and notarization notes
+script/          Local build/run helpers
+scripts/         Release and validation helpers
+```
 
-Production MLX embeddings/generation and OCR should be implemented behind the existing core interfaces when those integrations are selected.
+## Privacy
+
+Verity is designed around local-first document workflows. The current deterministic retrieval path does not require a hosted API. Review any future model, OCR, telemetry, or distribution integrations before enabling them for sensitive documents.
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+## Security
+
+Please report security issues privately. See [SECURITY.md](SECURITY.md).
+
+## License
+
+Verity is released under the [MIT License](LICENSE).

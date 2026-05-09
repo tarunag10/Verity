@@ -60,6 +60,49 @@ struct DocumentPipelineTests {
         #expect(results.first?.score ?? 0 > 0)
     }
 
+    @Test("legal search finds governing law clauses without loose law matches")
+    func legalSearchFindsGoverningLawClausesWithoutLooseLawMatches() throws {
+        let contract = DocumentMetadata(fileName: "service-agreement.txt", fileURL: URL(filePath: "/tmp/service-agreement.txt"), fileType: "txt")
+        let memo = DocumentMetadata(fileName: "legal-memo.txt", fileURL: URL(filePath: "/tmp/legal-memo.txt"), fileType: "txt")
+        let chunks = [
+            DocumentChunk(documentID: memo.id, documentName: memo.fileName, pageNumber: 1, text: "The law firm reviewed the commercial schedule and pricing exhibit."),
+            DocumentChunk(documentID: contract.id, documentName: contract.fileName, pageNumber: 9, text: "This Agreement shall be governed by and construed in accordance with the laws of the State of New York.")
+        ]
+
+        let results = LocalRAGEngine().search(query: "contracts agreements governing laws", chunks: chunks, limit: 3)
+
+        #expect(results.map(\.chunk.documentID) == [contract.id])
+        #expect(results.first?.snippet.contains("New York") == true)
+    }
+
+    @Test("search does not answer field queries from generic terms")
+    func searchDoesNotAnswerFieldQueriesFromGenericTerms() throws {
+        let agreement = DocumentMetadata(fileName: "service-agreement.txt", fileURL: URL(filePath: "/tmp/service-agreement.txt"), fileType: "txt")
+        let chunks = [
+            DocumentChunk(documentID: agreement.id, documentName: agreement.fileName, pageNumber: 2, text: "The terms and conditions remain in effect for all users."),
+            DocumentChunk(documentID: agreement.id, documentName: agreement.fileName, pageNumber: 8, text: "Fees are payable net 45 days after receipt of invoice.")
+        ]
+
+        let results = LocalRAGEngine().search(query: "payment terms", chunks: chunks, limit: 3)
+
+        #expect(results.map(\.chunk.pageNumber) == [8])
+        #expect(results.first?.snippet.contains("net 45") == true)
+    }
+
+    @Test("search requires the requested contract concept")
+    func searchRequiresTheRequestedContractConcept() throws {
+        let agreement = DocumentMetadata(fileName: "master-agreement.txt", fileURL: URL(filePath: "/tmp/master-agreement.txt"), fileType: "txt")
+        let chunks = [
+            DocumentChunk(documentID: agreement.id, documentName: agreement.fileName, pageNumber: 4, text: "This contract includes service levels and support procedures."),
+            DocumentChunk(documentID: agreement.id, documentName: agreement.fileName, pageNumber: 13, text: "Either party may terminate this Agreement with thirty days prior written notice.")
+        ]
+
+        let results = LocalRAGEngine().search(query: "contract agreement termination terms", chunks: chunks, limit: 3)
+
+        #expect(results.map(\.chunk.pageNumber) == [13])
+        #expect(results.first?.snippet.contains("thirty days") == true)
+    }
+
     @Test("answers questions with citations")
     func answersQuestionsWithCitations() throws {
         let document = DocumentMetadata(fileName: "lease.txt", fileURL: URL(filePath: "/tmp/lease.txt"), fileType: "txt")
@@ -73,6 +116,21 @@ struct DocumentPipelineTests {
         #expect(response.citations.count == 1)
         #expect(response.citations[0].documentName == "lease.txt")
         #expect(response.citations[0].pageNumber == 4)
+    }
+
+    @Test("answers governing law questions from the matching clause")
+    func answersGoverningLawQuestionsFromMatchingClause() throws {
+        let document = DocumentMetadata(fileName: "service-agreement.txt", fileURL: URL(filePath: "/tmp/service-agreement.txt"), fileType: "txt")
+        let chunks = [
+            DocumentChunk(documentID: document.id, documentName: document.fileName, pageNumber: 3, text: "Notices must be delivered by email to the account owner."),
+            DocumentChunk(documentID: document.id, documentName: document.fileName, pageNumber: 11, text: "Governing Law: This Agreement is governed by the laws of Delaware, without regard to conflicts of law rules.")
+        ]
+
+        let response = LocalRAGEngine().answer(question: "What are the governing laws for this agreement?", chunks: chunks)
+
+        #expect(response.text.contains("Delaware"))
+        #expect(response.citations.count == 1)
+        #expect(response.citations[0].pageNumber == 11)
     }
 
     @Test("unknown answers are honest")
@@ -189,6 +247,44 @@ struct DocumentPipelineTests {
         #expect(result.fields.first { $0.key == "invoiceNumber" }?.value == "INV-2048")
         #expect(result.fields.first { $0.key == "total" }?.value == "$1,240.50")
         #expect(result.fields.first { $0.key == "vendor" }?.citation?.documentName == "invoice.txt")
+    }
+
+    @Test("contract template extracts governed by law clauses")
+    func contractTemplateExtractsGovernedByLawClauses() throws {
+        let document = DocumentMetadata(fileName: "service-agreement.txt", fileURL: URL(filePath: "/tmp/service-agreement.txt"), fileType: "txt")
+        let chunks = [
+            DocumentChunk(
+                documentID: document.id,
+                documentName: document.fileName,
+                pageNumber: 12,
+                text: "This Agreement shall be governed by the laws of the State of California."
+            )
+        ]
+
+        let result = TemplateEngine().run(templateID: .contractReview, documents: [document], chunks: chunks)
+
+        let governingLaw = try #require(result.fields.first { $0.key == "governingLaw" })
+        #expect(governingLaw.value.contains("California"))
+        #expect(governingLaw.citation?.pageNumber == 12)
+    }
+
+    @Test("contract template avoids generic terms when extracting fields")
+    func contractTemplateAvoidsGenericTermsWhenExtractingFields() throws {
+        let document = DocumentMetadata(fileName: "service-agreement.txt", fileURL: URL(filePath: "/tmp/service-agreement.txt"), fileType: "txt")
+        let chunks = [
+            DocumentChunk(documentID: document.id, documentName: document.fileName, pageNumber: 2, text: "The terms and conditions are incorporated by reference."),
+            DocumentChunk(documentID: document.id, documentName: document.fileName, pageNumber: 7, text: "Payment shall be due within 30 days after invoice receipt."),
+            DocumentChunk(documentID: document.id, documentName: document.fileName, pageNumber: 12, text: "Either party may terminate this Agreement with sixty days prior written notice.")
+        ]
+
+        let result = TemplateEngine().run(templateID: .contractReview, documents: [document], chunks: chunks)
+
+        let paymentTerms = try #require(result.fields.first { $0.key == "paymentTerms" })
+        let terminationTerms = try #require(result.fields.first { $0.key == "terminationTerms" })
+        #expect(paymentTerms.value.contains("30 days"))
+        #expect(paymentTerms.citation?.pageNumber == 7)
+        #expect(terminationTerms.value.contains("sixty days"))
+        #expect(terminationTerms.citation?.pageNumber == 12)
     }
 
     @Test("template result exports CSV")
