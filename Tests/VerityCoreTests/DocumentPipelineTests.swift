@@ -242,6 +242,69 @@ struct DocumentPipelineTests {
         #expect(report.items.last?.status == .notFound)
     }
 
+    @Test("evaluation report exposes answer rate metrics")
+    func evaluationReportExposesAnswerRateMetrics() throws {
+        let report = EvaluationReport(items: [
+            EvaluationItem(question: "Question 1", status: .answered, answer: "Answer", citations: [
+                Citation(documentID: UUID(), documentName: "policy.txt", pageNumber: 1, snippet: "Answer")
+            ]),
+            EvaluationItem(question: "Question 2", status: .notFound, answer: "Not found", citations: []),
+            EvaluationItem(question: "Question 3", status: .answered, answer: "Answer", citations: [
+                Citation(documentID: UUID(), documentName: "contract.txt", pageNumber: 2, snippet: "Answer")
+            ])
+        ])
+
+        #expect(report.totalCount == 3)
+        #expect(report.answeredCount == 2)
+        #expect(report.notFoundCount == 1)
+        #expect(report.answerRate == 2.0 / 3.0)
+    }
+
+    @Test("model settings describe local AI readiness")
+    func modelSettingsDescribeLocalAIReadiness() throws {
+        let fallback = ModelSettings(
+            retrievalEngine: "Lexical fallback",
+            answerEngine: "Deterministic extractive answers",
+            modelRuntime: "Fallback runtime"
+        )
+        let mlx = ModelSettings(
+            retrievalEngine: "Native MLX embeddings",
+            answerEngine: "Native MLX chat model",
+            modelRuntime: "MLX Swift in-process runtime"
+        )
+
+        #expect(fallback.readiness == .fallback)
+        #expect(fallback.readiness.title == "Deterministic fallback")
+        #expect(mlx.readiness == .ready)
+        #expect(mlx.readiness.systemImage == "checkmark.seal.fill")
+    }
+
+    @Test("template field citation resolves to source reference")
+    @MainActor
+    func templateFieldCitationResolvesToSourceReference() async throws {
+        let root = try TemporaryFiles.directory()
+        let store = LibraryStore(storageDirectory: root)
+        let fileURL = try TemporaryFiles.write(
+            directory: root,
+            name: "invoice.txt",
+            contents: """
+            Vendor: Acme Supplies
+            Invoice Number: INV-2048
+            Total: $1,240.50
+            Payment Terms: Net 30
+            """
+        )
+
+        try await store.importDocument(fileURL)
+        let result = store.runTemplate(.invoiceExtraction, documentIDs: [])
+        let field = try #require(result.fields.first { $0.key == "invoiceNumber" })
+        let source = try #require(store.sourceReference(for: field))
+
+        #expect(source.title == "invoice.txt")
+        #expect(source.fileURL == fileURL)
+        #expect(source.snippet == "INV-2048")
+    }
+
     @Test("vector index ranks chunks by embedding similarity")
     func vectorIndexRanksChunksByEmbeddingSimilarity() async throws {
         let alpha = DocumentMetadata(fileName: "alpha.txt", fileURL: URL(filePath: "/tmp/alpha.txt"), fileType: "txt")

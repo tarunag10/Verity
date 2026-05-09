@@ -4,6 +4,10 @@ import VerityCore
 struct SettingsCenterView: View {
     @ObservedObject var store: LibraryStore
 
+    private var readiness: ModelReadiness {
+        store.modelSettings.readiness
+    }
+
     var body: some View {
         Form {
             Section("Privacy and Trust") {
@@ -17,7 +21,22 @@ struct SettingsCenterView: View {
                 }
             }
 
-            Section("Local AI Engine") {
+            Section("Local AI Readiness") {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: readiness.systemImage)
+                        .font(.title2)
+                        .foregroundStyle(readiness == .ready ? .green : .secondary)
+                        .frame(width: 28)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(readiness.title)
+                            .font(.headline)
+                        Text(readiness.guidance)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 LabeledContent("Retrieval") {
                     Text(store.modelSettings.retrievalEngine)
                 }
@@ -32,11 +51,13 @@ struct SettingsCenterView: View {
                 }
                 LabeledContent("Language model") {
                     Text(store.modelSettings.languageModelIdentifier)
+                        .textSelection(.enabled)
                 }
                 LabeledContent("Embedding model") {
                     Text(store.modelSettings.embeddingModelIdentifier)
+                        .textSelection(.enabled)
                 }
-                Text("The MLX module runs in-process on the Mac and downloads Hugging Face models into the local cache on first use. The existing lexical engine remains available as the no-download fallback.")
+                Text("MLX models run in process and may be downloaded by the runtime on first use. Deterministic local retrieval remains available as the no-download fallback.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -46,7 +67,23 @@ struct SettingsCenterView: View {
                     Text("Ready")
                 }
                 LabeledContent("Scanned PDFs and image OCR") {
-                    Text("Add a local OCR adapter")
+                    Text("Local OCR adapter needed")
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("Indexed documents") {
+                    Text("\(store.documents.filter { $0.status == .ready }.count)")
+                }
+                LabeledContent("Stored chunks") {
+                    Text("\(store.chunks.count)")
+                }
+            }
+
+            Section("Workflow History") {
+                LabeledContent("Template runs") {
+                    Text("\(store.templateResults.count)")
+                }
+                LabeledContent("Evaluation reports") {
+                    Text("\(store.evaluationReports.count)")
                 }
             }
 
@@ -55,6 +92,7 @@ struct SettingsCenterView: View {
                     Text(store.storageDirectory.path(percentEncoded: false))
                         .font(.caption)
                         .lineLimit(2)
+                        .textSelection(.enabled)
                 }
                 LabeledContent("Documents") {
                     Text("\(store.documents.count)")

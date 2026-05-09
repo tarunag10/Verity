@@ -16,12 +16,26 @@ struct VerityApp: App {
                     store.newChat()
                 }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
+
+                Button("Summarize Current Scope") {
+                    store.summarize()
+                }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+                .disabled(store.chunks.isEmpty)
+            }
+
+            CommandMenu("Verity") {
+                Button("Run Evaluation") {
+                    store.runEvaluation()
+                }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+                .disabled(store.chunks.isEmpty)
             }
         }
 
         Settings {
-            PrivacySettingsView(store: store)
-                .frame(width: 520)
+            SettingsCenterView(store: store)
+                .frame(width: 620)
         }
     }
 }

@@ -230,6 +230,11 @@ public final class LibraryStore: ObservableObject {
         )
     }
 
+    public func sourceReference(for field: ExtractedField) -> SourceReference? {
+        guard let citation = field.citation else { return nil }
+        return sourceReference(for: citation)
+    }
+
     private func scopedChunks(_ scope: Set<UUID>) -> [DocumentChunk] {
         scope.isEmpty ? chunks : chunks.filter { scope.contains($0.documentID) }
     }

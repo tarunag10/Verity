@@ -349,6 +349,61 @@ public struct EvaluationReport: Identifiable, Codable, Hashable, Sendable {
         self.items = items
         self.createdAt = createdAt
     }
+
+    public var totalCount: Int {
+        items.count
+    }
+
+    public var answeredCount: Int {
+        items.filter { $0.status == .answered }.count
+    }
+
+    public var notFoundCount: Int {
+        items.filter { $0.status == .notFound }.count
+    }
+
+    public var answerRate: Double {
+        guard totalCount > 0 else { return 0 }
+        return Double(answeredCount) / Double(totalCount)
+    }
+}
+
+public enum ModelReadiness: String, Codable, Hashable, Sendable {
+    case ready
+    case fallback
+    case needsModel
+    case unavailable
+
+    public var title: String {
+        switch self {
+        case .ready: "MLX ready"
+        case .fallback: "Deterministic fallback"
+        case .needsModel: "Model setup needed"
+        case .unavailable: "Unavailable"
+        }
+    }
+
+    public var systemImage: String {
+        switch self {
+        case .ready: "checkmark.seal.fill"
+        case .fallback: "arrow.triangle.2.circlepath.circle.fill"
+        case .needsModel: "square.and.arrow.down.fill"
+        case .unavailable: "exclamationmark.triangle.fill"
+        }
+    }
+
+    public var guidance: String {
+        switch self {
+        case .ready:
+            "Verity is configured for local MLX retrieval and cited generation."
+        case .fallback:
+            "Verity can still import, search, extract, and answer using deterministic local retrieval."
+        case .needsModel:
+            "Choose local model identifiers or allow the MLX runtime to fetch them on first use."
+        case .unavailable:
+            "Local AI is not available with the current runtime configuration."
+        }
+    }
 }
 
 public struct ModelSettings: Codable, Hashable, Sendable {
@@ -373,5 +428,34 @@ public struct ModelSettings: Codable, Hashable, Sendable {
         self.hardwareSummary = hardwareSummary
         self.languageModelIdentifier = languageModelIdentifier
         self.embeddingModelIdentifier = embeddingModelIdentifier
+    }
+
+    public var readiness: ModelReadiness {
+        let combined = [
+            retrievalEngine,
+            answerEngine,
+            modelRuntime,
+            languageModelIdentifier,
+            embeddingModelIdentifier
+        ].joined(separator: " ").lowercased()
+
+        if combined.contains("unavailable") || combined.contains("unsupported") {
+            return .unavailable
+        }
+
+        if languageModelIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            embeddingModelIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return .needsModel
+        }
+
+        if combined.contains("fallback") || combined.contains("deterministic") || combined.contains("lexical") {
+            return .fallback
+        }
+
+        if combined.contains("mlx") {
+            return .ready
+        }
+
+        return .needsModel
     }
 }
