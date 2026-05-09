@@ -3,6 +3,7 @@ import VerityCore
 
 enum AppSection: Hashable {
     case documents
+    case collections
     case templates
     case evaluation
     case settings
@@ -17,6 +18,7 @@ struct ContentView: View {
     private var selectedSection: Binding<AppSection?> {
         Binding {
             if selectedSectionData == "documents" { return .documents }
+            if selectedSectionData == "collections" { return .collections }
             if selectedSectionData == "templates" { return .templates }
             if selectedSectionData == "evaluation" { return .evaluation }
             if selectedSectionData == "settings" { return .settings }
@@ -27,6 +29,8 @@ struct ContentView: View {
             switch value {
             case .documents:
                 selectedSectionData = "documents"
+            case .collections:
+                selectedSectionData = "collections"
             case .templates:
                 selectedSectionData = "templates"
             case .evaluation:
@@ -57,6 +61,8 @@ struct ContentView: View {
     @ViewBuilder
     private var detailView: some View {
         switch selectedSection.wrappedValue {
+        case .collections:
+            CollectionsView(store: store)
         case .templates:
             TemplatesView(store: store)
         case .evaluation:

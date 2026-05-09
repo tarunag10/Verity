@@ -135,6 +135,7 @@ public struct SourceReference: Identifiable, Codable, Hashable, Sendable {
     public var fileType: String
     public var pageNumber: Int?
     public var snippet: String
+    public var highlight: SourceHighlight?
 
     public init(
         id: UUID = UUID(),
@@ -143,7 +144,8 @@ public struct SourceReference: Identifiable, Codable, Hashable, Sendable {
         fileURL: URL,
         fileType: String,
         pageNumber: Int?,
-        snippet: String
+        snippet: String,
+        highlight: SourceHighlight? = nil
     ) {
         self.id = id
         self.documentID = documentID
@@ -152,6 +154,19 @@ public struct SourceReference: Identifiable, Codable, Hashable, Sendable {
         self.fileType = fileType
         self.pageNumber = pageNumber
         self.snippet = snippet
+        self.highlight = highlight
+    }
+}
+
+public struct SourceHighlight: Codable, Hashable, Sendable {
+    public var pageNumber: Int?
+    public var snippet: String
+    public var range: Range<Int>
+
+    public init(pageNumber: Int?, snippet: String, range: Range<Int>) {
+        self.pageNumber = pageNumber
+        self.snippet = snippet
+        self.range = range
     }
 }
 
@@ -278,6 +293,31 @@ public struct TemplateDefinition: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
+public struct CustomTemplateDefinition: Identifiable, Codable, Hashable, Sendable {
+    public var id: UUID
+    public var name: String
+    public var summary: String
+    public var fields: [TemplateField]
+    public var createdAt: Date
+    public var updatedAt: Date
+
+    public init(
+        id: UUID = UUID(),
+        name: String,
+        summary: String,
+        fields: [TemplateField],
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.summary = summary
+        self.fields = fields
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
 public struct ExtractedField: Identifiable, Codable, Hashable, Sendable {
     public var id: String { key }
     public var key: String
@@ -296,6 +336,7 @@ public struct ExtractedField: Identifiable, Codable, Hashable, Sendable {
 public struct TemplateRunResult: Identifiable, Codable, Hashable, Sendable {
     public var id: UUID
     public var templateID: TemplateID
+    public var customTemplateID: UUID?
     public var templateName: String
     public var documentNames: [String]
     public var fields: [ExtractedField]
@@ -304,6 +345,7 @@ public struct TemplateRunResult: Identifiable, Codable, Hashable, Sendable {
     public init(
         id: UUID = UUID(),
         templateID: TemplateID,
+        customTemplateID: UUID? = nil,
         templateName: String,
         documentNames: [String],
         fields: [ExtractedField],
@@ -311,10 +353,36 @@ public struct TemplateRunResult: Identifiable, Codable, Hashable, Sendable {
     ) {
         self.id = id
         self.templateID = templateID
+        self.customTemplateID = customTemplateID
         self.templateName = templateName
         self.documentNames = documentNames
         self.fields = fields
         self.createdAt = createdAt
+    }
+}
+
+public struct DocumentCollection: Identifiable, Codable, Hashable, Sendable {
+    public var id: UUID
+    public var name: String
+    public var summary: String
+    public var documentIDs: Set<UUID>
+    public var createdAt: Date
+    public var updatedAt: Date
+
+    public init(
+        id: UUID = UUID(),
+        name: String,
+        summary: String = "",
+        documentIDs: Set<UUID> = [],
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.summary = summary
+        self.documentIDs = documentIDs
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }
 
@@ -402,6 +470,81 @@ public enum ModelReadiness: String, Codable, Hashable, Sendable {
             "Choose local model identifiers or allow the MLX runtime to fetch them on first use."
         case .unavailable:
             "Local AI is not available with the current runtime configuration."
+        }
+    }
+}
+
+public enum ModelSetupStatus: String, Codable, Hashable, Sendable {
+    case ready
+    case needsDownloadApproval
+    case needsModelSelection
+}
+
+public struct ModelSetupState: Codable, Hashable, Sendable {
+    public var allowsModelDownloads: Bool
+    public var languageModelCached: Bool
+    public var embeddingModelCached: Bool
+    public var cacheDirectory: URL?
+
+    public init(
+        allowsModelDownloads: Bool = false,
+        languageModelCached: Bool = false,
+        embeddingModelCached: Bool = false,
+        cacheDirectory: URL? = nil
+    ) {
+        self.allowsModelDownloads = allowsModelDownloads
+        self.languageModelCached = languageModelCached
+        self.embeddingModelCached = embeddingModelCached
+        self.cacheDirectory = cacheDirectory
+    }
+
+    public var missingModelCount: Int {
+        [languageModelCached, embeddingModelCached].filter { !$0 }.count
+    }
+
+    public var isReady: Bool {
+        missingModelCount == 0
+    }
+
+    public var status: ModelSetupStatus {
+        if isReady { return .ready }
+        return allowsModelDownloads ? .needsModelSelection : .needsDownloadApproval
+    }
+}
+
+public enum OCRStatus: String, Codable, Hashable, Sendable {
+    case notConfigured
+    case ready
+    case unavailable
+}
+
+public struct OCRSettings: Codable, Hashable, Sendable {
+    public var status: OCRStatus
+    public var adapterName: String
+    public var supportedFileTypes: [String]
+
+    public init(
+        status: OCRStatus = .notConfigured,
+        adapterName: String = "Local OCR adapter",
+        supportedFileTypes: [String] = ["pdf", "png", "jpg", "jpeg", "tiff"]
+    ) {
+        self.status = status
+        self.adapterName = adapterName
+        self.supportedFileTypes = supportedFileTypes
+    }
+
+    public var isReady: Bool {
+        status == .ready
+    }
+
+    public var guidance: String {
+        switch status {
+        case .ready:
+            "\(adapterName) is ready to process scanned documents locally."
+        case .notConfigured:
+            "Connect a local OCR adapter to process scanned PDFs and images without uploading files."
+        case .unavailable:
+            "OCR is unavailable on this Mac with the current configuration."
         }
     }
 }

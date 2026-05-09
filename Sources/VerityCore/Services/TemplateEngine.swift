@@ -79,6 +79,22 @@ public struct TemplateEngine: Sendable {
         )
     }
 
+    public func run(customTemplate: CustomTemplateDefinition, documents: [DocumentMetadata], chunks: [DocumentChunk]) -> TemplateRunResult {
+        let documentIDs = Set(documents.map(\.id))
+        let scopedChunks = chunks.filter { documentIDs.isEmpty || documentIDs.contains($0.documentID) }
+        let fields = customTemplate.fields.map { field in
+            extract(field: field, chunks: scopedChunks)
+        }
+
+        return TemplateRunResult(
+            templateID: .invoiceExtraction,
+            customTemplateID: customTemplate.id,
+            templateName: customTemplate.name,
+            documentNames: documents.map(\.fileName),
+            fields: fields
+        )
+    }
+
     public func exportCSV(results: [TemplateRunResult]) -> String {
         var rows = [["Template", "Documents", "Field", "Value", "Citation"]]
         for result in results {

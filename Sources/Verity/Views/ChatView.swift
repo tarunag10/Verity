@@ -60,8 +60,9 @@ struct ChatView: View {
 
             Text(scopeDescription)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
+                .accessibilityLabel("Chat scope: \(scopeDescription)")
 
             Spacer()
 
@@ -101,11 +102,11 @@ struct ChatView: View {
         VStack(alignment: .leading, spacing: 12) {
             Image(systemName: "doc.text.magnifyingglass")
                 .font(.largeTitle)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
             Text("Ask Verity what your documents say.")
                 .font(.title2.weight(.semibold))
             Text("Answers are assembled from local passages and include citations you can open in one click.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: 520, alignment: .leading)
@@ -118,6 +119,8 @@ struct ChatView: View {
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(2...5)
                 .onSubmit(send)
+                .accessibilityLabel("Ask Verity")
+                .accessibilityHint("Type a question about your imported documents.")
 
             Button {
                 send()
@@ -126,6 +129,7 @@ struct ChatView: View {
             }
             .keyboardShortcut(.return, modifiers: [.command])
             .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.chunks.isEmpty)
+            .accessibilityHint("Sends your question to the local document assistant.")
         }
         .padding()
     }
@@ -163,11 +167,11 @@ private struct MessageBubble: View {
             HStack {
                 Label(message.role == .user ? "You" : "Verity", systemImage: message.role == .user ? "person.crop.circle" : "sparkle.magnifyingglass")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                 Spacer()
                 Text(message.createdAt, style: .time)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .font(.caption)
+                    .foregroundStyle(.primary)
             }
 
             Text(message.text)
@@ -182,30 +186,37 @@ private struct MessageBubble: View {
                         } label: {
                             HStack(alignment: .top, spacing: 8) {
                                 Image(systemName: "quote.bubble")
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.primary)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("\(citation.documentName)\(citation.pageNumber.map { " - Page \($0)" } ?? "")")
                                         .font(.caption.weight(.semibold))
                                     Text(citation.snippet)
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(.primary)
                                         .lineLimit(2)
                                 }
                                 Spacer()
                             }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Citation from \(citation.documentName)\(citation.pageNumber.map { ", page \($0)" } ?? ""): \(citation.snippet)")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.bordered)
                     }
                 }
                 .padding(10)
-                .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 8))
+                .accessiblePanel()
             }
         }
         .padding(14)
         .frame(maxWidth: 740, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 8)
-                .fill(message.role == .user ? Color.blue.opacity(0.10) : Color(nsColor: .controlBackgroundColor))
+                .fill(Color(nsColor: .controlBackgroundColor))
         }
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.primary.opacity(message.role == .user ? 0.45 : 0.28), lineWidth: message.role == .user ? 2 : 1)
+        }
+        .accessibilityElement(children: .contain)
     }
 }

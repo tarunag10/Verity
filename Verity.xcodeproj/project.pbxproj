@@ -13,6 +13,7 @@
 		1AAB690693F106FEB6ACF4E5 /* VerityCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0D9E42FD32837B58AB5F1034 /* VerityCore.framework */; };
 		1E9A66243360294CD6B82732 /* LocalAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05FAA6467E1D829268224B9F /* LocalAI.swift */; };
 		1F11E58CF635DD46CC78D4E9 /* VerityCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0D9E42FD32837B58AB5F1034 /* VerityCore.framework */; };
+		28F5E1FC427D753185063543 /* CollectionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD148FD1CABDA92559694A9D /* CollectionsView.swift */; };
 		2D4EE3ED3173272CEEF5F70D /* VerityCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 0D9E42FD32837B58AB5F1034 /* VerityCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		2DA83263EF6D5066C7286315 /* MLXLMTokenizers in Frameworks */ = {isa = PBXBuildFile; productRef = F891502246BD35C6D73C873B /* MLXLMTokenizers */; };
 		2E567A829D96B4C5C186A0AA /* MLXEmbeddersTokenizers in Frameworks */ = {isa = PBXBuildFile; productRef = 6821680231A77A0FD2831350 /* MLXEmbeddersTokenizers */; };
@@ -20,6 +21,7 @@
 		3AE8F9920F33B56206F254BA /* MLXEmbeddersHFAPI in Frameworks */ = {isa = PBXBuildFile; productRef = DCFE2297B5CDB1CE2A961FEB /* MLXEmbeddersHFAPI */; };
 		4316D8011A591758819FEE39 /* DocumentViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BFFC3CC49DD61C5507B55D2 /* DocumentViewerView.swift */; };
 		437EFD44235E0E4696C2B9E0 /* VerityModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B912D8BA051071C782E81F2 /* VerityModels.swift */; };
+		47E4D8DC86BE92874E5D6430 /* AccessibilitySupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AFB3134986AABC3B94115E2 /* AccessibilitySupport.swift */; };
 		4B0E002319798FBDB479D3A4 /* TemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB58B6FA022D2D2A2F0BFAD /* TemplatesView.swift */; };
 		51BB287CF1C5277F3C6CCC13 /* SettingsCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69AD5F035134B3D954D059ED /* SettingsCenterView.swift */; };
 		55AAB4D903DAEB7C657E25CA /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D890650022C7910C97AB3CBC /* SidebarView.swift */; };
@@ -112,6 +114,7 @@
 		2C695B6222BD10A648C82D1B /* LocalRAGEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalRAGEngine.swift; sourceTree = "<group>"; };
 		341E1D374CADF493DD47956D /* VerityCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VerityCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		390894E38E4A9B9A2D6F0419 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		3AFB3134986AABC3B94115E2 /* AccessibilitySupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilitySupport.swift; sourceTree = "<group>"; };
 		4331FBD2CEDF7AFB721D3B17 /* LibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStore.swift; sourceTree = "<group>"; };
 		56513DBBFCD9A2FEBAFD02F6 /* Verity.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Verity.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		69AD5F035134B3D954D059ED /* SettingsCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsCenterView.swift; sourceTree = "<group>"; };
@@ -122,6 +125,7 @@
 		9BFFC3CC49DD61C5507B55D2 /* DocumentViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentViewerView.swift; sourceTree = "<group>"; };
 		9F1DF0F171537BE5BDC1E92B /* VerityMLX.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = VerityMLX.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A63A61A4A6F3DA1E2381FFE0 /* VerityApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerityApp.swift; sourceTree = "<group>"; };
+		AD148FD1CABDA92559694A9D /* CollectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionsView.swift; sourceTree = "<group>"; };
 		B12232A7D4D21F3880D5C2F2 /* DocumentChunker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentChunker.swift; sourceTree = "<group>"; };
 		B773B96DDB5B79D143158269 /* Verity.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Verity.entitlements; sourceTree = "<group>"; };
 		B93D4852FDEB7C2815E2DE02 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
@@ -200,6 +204,7 @@
 			isa = PBXGroup;
 			children = (
 				E597E101798EC2C5284DE393 /* ChatView.swift */,
+				AD148FD1CABDA92559694A9D /* CollectionsView.swift */,
 				390894E38E4A9B9A2D6F0419 /* ContentView.swift */,
 				75CC9C20B91C3731BC7841E6 /* DocumentListView.swift */,
 				9BFFC3CC49DD61C5507B55D2 /* DocumentViewerView.swift */,
@@ -241,6 +246,7 @@
 		968FE50A23559D1D1512754B /* Support */ = {
 			isa = PBXGroup;
 			children = (
+				3AFB3134986AABC3B94115E2 /* AccessibilitySupport.swift */,
 				B93D4852FDEB7C2815E2DE02 /* AppEnvironment.swift */,
 			);
 			path = Support;
@@ -481,8 +487,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				47E4D8DC86BE92874E5D6430 /* AccessibilitySupport.swift in Sources */,
 				C968B56E8199981776DD5B2A /* AppEnvironment.swift in Sources */,
 				EDCC13C1B1636BAEA8B36E08 /* ChatView.swift in Sources */,
+				28F5E1FC427D753185063543 /* CollectionsView.swift in Sources */,
 				87A8D51B1780A7563E5E388E /* ContentView.swift in Sources */,
 				A13D393EC84485891B6F58BD /* DocumentListView.swift in Sources */,
 				4316D8011A591758819FEE39 /* DocumentViewerView.swift in Sources */,

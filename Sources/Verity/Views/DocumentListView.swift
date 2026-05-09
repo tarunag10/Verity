@@ -52,32 +52,34 @@ struct DocumentListView: View {
                 } label: {
                     Label("Import", systemImage: "tray.and.arrow.down")
                 }
+                .accessibilityHint("Import local PDF, text, Markdown, or RTF documents.")
                 Button {
                     isFolderImporterPresented = true
                 } label: {
                     Label("Folder", systemImage: "folder.badge.plus")
                 }
+                .accessibilityLabel("Import Folder")
+                .accessibilityHint("Import supported documents from a local folder.")
             }
 
             HStack(spacing: 8) {
-                Image(systemName: "lock.fill")
-                    .foregroundStyle(.green)
-                Text("Local-only by default")
+                AccessibleStatusLabel("Local-only by default", systemImage: "lock.fill")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
                 Spacer()
                 Text("\(store.documents.count) documents")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
             }
 
             TextField("Search passages", text: $searchText)
                 .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Search document passages")
 
             if let importError {
                 Text(importError)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(.primary)
+                    .accessibilityLabel("Import error: \(importError)")
             }
 
             if let progress = store.importProgress {
@@ -85,7 +87,7 @@ struct DocumentListView: View {
                     HStack {
                         Text(importStatusText(progress))
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
                             .lineLimit(1)
                         Spacer()
                         Button {
@@ -94,12 +96,16 @@ struct DocumentListView: View {
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
                         .help("Cancel import")
+                        .accessibilityLabel("Cancel import")
+                        .accessibleMinimumTarget()
                     }
 
                     ProgressView(value: progress.fractionCompleted)
                         .progressViewStyle(.linear)
+                        .accessibilityLabel("Import progress")
+                        .accessibilityValue("\(Int(progress.fractionCompleted * 100)) percent")
                 }
             }
         }
@@ -128,13 +134,14 @@ struct DocumentListView: View {
                     .lineLimit(1)
                 Text(result.snippet)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                     .lineLimit(3)
                 Text(pageLabel(result.chunk.pageNumber))
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.primary)
             }
             .padding(.vertical, 4)
+            .accessibilityElement(children: .combine)
         }
     }
 
@@ -200,7 +207,7 @@ private struct DocumentRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: iconName)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
                 .frame(width: 16)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -208,10 +215,12 @@ private struct DocumentRow: View {
                     .lineLimit(1)
                 Text("\(document.fileType.uppercased()) - \(statusText)")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(document.fileName), \(document.fileType.uppercased()), \(statusText)")
     }
 
     private var iconName: String {

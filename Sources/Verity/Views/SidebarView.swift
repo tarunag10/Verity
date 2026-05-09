@@ -11,6 +11,9 @@ struct SidebarView: View {
                 Label("Documents", systemImage: "doc.text.magnifyingglass")
                     .tag(AppSection.documents)
 
+                Label("Collections", systemImage: "folder")
+                    .tag(AppSection.collections)
+
                 Label("Templates", systemImage: "tablecells")
                     .tag(AppSection.templates)
 
@@ -49,7 +52,7 @@ private struct ChatRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "message")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
                 .frame(width: 16)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -57,9 +60,11 @@ private struct ChatRow: View {
                     .lineLimit(1)
                 Text(chat.updatedAt, style: .date)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(chat.title), updated \(chat.updatedAt.formatted(date: .abbreviated, time: .omitted))")
     }
 }

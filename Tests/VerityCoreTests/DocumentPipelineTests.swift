@@ -305,6 +305,93 @@ struct DocumentPipelineTests {
         #expect(source.snippet == "INV-2048")
     }
 
+    @Test("collections scope documents for workflows")
+    @MainActor
+    func collectionsScopeDocumentsForWorkflows() async throws {
+        let root = try TemporaryFiles.directory()
+        let store = LibraryStore(storageDirectory: root)
+        let contract = try TemporaryFiles.write(directory: root, name: "contract.txt", contents: "Termination requires 30 days notice.")
+        let invoice = try TemporaryFiles.write(directory: root, name: "invoice.txt", contents: "Invoice total is $500.")
+
+        try await store.importDocument(contract)
+        let contractID = try #require(store.documents.first { $0.fileName == "contract.txt" }?.id)
+        try await store.importDocument(invoice)
+        let invoiceID = try #require(store.documents.first { $0.fileName == "invoice.txt" }?.id)
+
+        let collection = store.createCollection(name: "Client A", documentIDs: [contractID])
+        store.addDocument(invoiceID, toCollection: collection.id)
+
+        #expect(store.collections.first?.name == "Client A")
+        #expect(store.documentScope(forCollection: collection.id) == Set([contractID, invoiceID]))
+    }
+
+    @Test("custom templates can be saved and run")
+    @MainActor
+    func customTemplatesCanBeSavedAndRun() async throws {
+        let root = try TemporaryFiles.directory()
+        let store = LibraryStore(storageDirectory: root)
+        let invoice = try TemporaryFiles.write(directory: root, name: "invoice.txt", contents: "Project Code: ALPHA-42")
+
+        try await store.importDocument(invoice)
+        let custom = store.saveCustomTemplate(
+            name: "Project Extractor",
+            summary: "Extracts internal project metadata.",
+            fields: [
+                TemplateField(key: "projectCode", label: "Project Code", prompt: "Project code")
+            ]
+        )
+        let result = try #require(store.runCustomTemplate(custom.id, documentIDs: []))
+
+        #expect(store.customTemplates.first?.name == "Project Extractor")
+        #expect(result.templateName == "Project Extractor")
+        #expect(result.customTemplateID == custom.id)
+        #expect(result.fields.first?.value == "ALPHA-42")
+    }
+
+    @Test("source references include citation highlight ranges")
+    @MainActor
+    func sourceReferencesIncludeCitationHighlightRanges() async throws {
+        let root = try TemporaryFiles.directory()
+        let store = LibraryStore(storageDirectory: root)
+        let fileURL = try TemporaryFiles.write(
+            directory: root,
+            name: "lease.txt",
+            contents: "The lease can be terminated with sixty days written notice before renewal."
+        )
+
+        try await store.importDocument(fileURL)
+        store.ask("How can the lease be terminated?")
+        let citation = try #require(store.activeChat?.messages.last?.citations.first)
+        let source = try #require(store.sourceReference(for: citation))
+
+        #expect(source.highlight?.snippet == citation.snippet)
+        #expect(source.highlight?.range.lowerBound == 0)
+        #expect((source.highlight?.range.upperBound ?? 0) > 0)
+    }
+
+    @Test("OCR settings start as adapter ready scaffold")
+    func ocrSettingsStartAsAdapterReadyScaffold() throws {
+        let settings = OCRSettings()
+
+        #expect(settings.status == .notConfigured)
+        #expect(settings.isReady == false)
+        #expect(settings.supportedFileTypes.contains("pdf"))
+        #expect(settings.guidance.contains("local OCR"))
+    }
+
+    @Test("model setup tracks cache readiness")
+    func modelSetupTracksCacheReadiness() throws {
+        let setup = ModelSetupState(
+            allowsModelDownloads: false,
+            languageModelCached: true,
+            embeddingModelCached: false
+        )
+
+        #expect(setup.status == .needsDownloadApproval)
+        #expect(setup.isReady == false)
+        #expect(setup.missingModelCount == 1)
+    }
+
     @Test("vector index ranks chunks by embedding similarity")
     func vectorIndexRanksChunksByEmbeddingSimilarity() async throws {
         let alpha = DocumentMetadata(fileName: "alpha.txt", fileURL: URL(filePath: "/tmp/alpha.txt"), fileType: "txt")

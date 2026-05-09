@@ -22,7 +22,7 @@ struct DocumentViewerView: View {
     private var header: some View {
         HStack(spacing: 10) {
             Image(systemName: source.fileType == "pdf" ? "doc.richtext" : "doc.plaintext")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(source.title)
@@ -30,7 +30,7 @@ struct DocumentViewerView: View {
                     .lineLimit(1)
                 Text(pageLabel)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
             }
 
             Spacer()
@@ -56,7 +56,7 @@ struct DocumentViewerView: View {
             HStack {
                 Label("Citation context", systemImage: "quote.bubble")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                 Spacer()
             }
 
@@ -64,12 +64,23 @@ struct DocumentViewerView: View {
                 .font(.callout)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
+                .padding(source.highlight == nil ? 0 : 8)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(source.highlight == nil ? Color.clear : Color.primary, lineWidth: 2)
+                }
+
+            if let highlight = source.highlight {
+                Label("Highlighted passage at characters \(highlight.range.lowerBound)-\(highlight.range.upperBound)", systemImage: "highlighter")
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+            }
 
             TextField("Search this document", text: $searchText)
                 .textFieldStyle(.roundedBorder)
         }
         .padding()
-        .background(Color(nsColor: .controlBackgroundColor))
+        .accessiblePanel()
     }
 
     @ViewBuilder
@@ -147,6 +158,7 @@ private struct TextSourceView: View {
         ScrollView {
             Text(displayedText)
                 .font(.system(.body, design: .serif))
+                .foregroundStyle(.primary)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)

@@ -5,13 +5,25 @@ import VerityCore
 struct TemplatesView: View {
     @ObservedObject var store: LibraryStore
     @State private var selectedTemplateID: TemplateID = .invoiceExtraction
+    @State private var selectedCustomTemplateID: UUID?
     @State private var selectedDocumentIDs: Set<UUID> = []
     @State private var selectedResultID: UUID?
     @State private var selectedSource: SourceReference?
     @State private var exportMessage: String?
+    @State private var newCustomTemplateName = ""
 
     private var selectedTemplate: TemplateDefinition {
         TemplateEngine.builtInTemplates.first { $0.id == selectedTemplateID } ?? TemplateEngine.builtInTemplates[0]
+    }
+
+    private var selectedCustomTemplate: CustomTemplateDefinition? {
+        selectedCustomTemplateID.flatMap { id in
+            store.customTemplates.first { $0.id == id }
+        }
+    }
+
+    private var selectedTemplateSummary: String {
+        selectedCustomTemplate?.summary ?? selectedTemplate.summary
     }
 
     private var selectedResult: TemplateRunResult? {
@@ -41,16 +53,22 @@ struct TemplatesView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Reusable Workflows")
                     .font(.headline)
-                Text(selectedTemplate.summary)
+                Text(selectedTemplateSummary)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
             }
 
             Spacer()
 
             Button {
-                let result = store.runTemplate(selectedTemplateID, documentIDs: selectedDocumentIDs)
+                let result: TemplateRunResult
+                if let selectedCustomTemplateID,
+                   let customResult = store.runCustomTemplate(selectedCustomTemplateID, documentIDs: selectedDocumentIDs) {
+                    result = customResult
+                } else {
+                    result = store.runTemplate(selectedTemplateID, documentIDs: selectedDocumentIDs)
+                }
                 selectedResultID = result.id
                 selectedSource = nil
                 exportMessage = "Created \(result.templateName)"
@@ -75,22 +93,65 @@ struct TemplatesView: View {
                 ForEach(TemplateEngine.builtInTemplates) { template in
                     Button {
                         selectedTemplateID = template.id
+                        selectedCustomTemplateID = nil
                     } label: {
                         HStack(spacing: 10) {
                             Image(systemName: selectedTemplateID == template.id ? "tablecells.fill" : "tablecells")
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.primary)
                                 .frame(width: 16)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(template.name)
                                     .lineLimit(1)
                                 Text(template.summary)
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.primary)
                                     .lineLimit(2)
                             }
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.bordered)
+                }
+            }
+
+            Section("Custom") {
+                HStack {
+                    TextField("New field extractor", text: $newCustomTemplateName)
+                        .textFieldStyle(.roundedBorder)
+                    Button {
+                        let name = newCustomTemplateName.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !name.isEmpty else { return }
+                        let template = store.saveCustomTemplate(
+                            name: name,
+                            summary: "Custom local extraction workflow.",
+                            fields: [TemplateField(key: "customField", label: "Custom Field", prompt: "Custom field")]
+                        )
+                        selectedCustomTemplateID = template.id
+                        newCustomTemplateName = ""
+                    } label: {
+                        Image(systemName: "plus")
+                            .accessibilityLabel("Create custom template")
+                    }
+                    .disabled(newCustomTemplateName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+
+                ForEach(store.customTemplates) { template in
+                    Button {
+                        selectedCustomTemplateID = template.id
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: selectedCustomTemplateID == template.id ? "slider.horizontal.3.fill" : "slider.horizontal.3")
+                                .foregroundStyle(.primary)
+                                .frame(width: 16)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(template.name)
+                                    .lineLimit(1)
+                                Text("\(template.fields.count) fields")
+                                    .font(.caption)
+                                    .foregroundStyle(.primary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
 
@@ -103,19 +164,19 @@ struct TemplatesView: View {
                         } label: {
                             HStack(spacing: 10) {
                                 Image(systemName: selectedResult?.id == result.id ? "clock.badge.checkmark.fill" : "clock")
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.primary)
                                     .frame(width: 16)
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(result.templateName)
                                         .lineLimit(1)
                                     Text("\(result.documentNames.count) documents - \(result.createdAt.formatted(date: .abbreviated, time: .shortened))")
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(.primary)
                                         .lineLimit(1)
                                 }
                             }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.bordered)
                     }
                 }
             }
@@ -124,7 +185,7 @@ struct TemplatesView: View {
                 if store.documents.isEmpty {
                     Text("Import documents to run workflows.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                 } else {
                     ForEach(store.documents) { document in
                         Toggle(isOn: documentBinding(document.id)) {
@@ -143,7 +204,7 @@ struct TemplatesView: View {
                 if let exportMessage {
                     Text(exportMessage)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                         .padding([.horizontal, .top])
                 }
 
@@ -164,16 +225,17 @@ struct TemplatesView: View {
                                 } label: {
                                     HStack(alignment: .top, spacing: 6) {
                                         Image(systemName: "quote.bubble")
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(.primary)
                                         Text(source.snippet)
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(.primary)
                                             .lineLimit(2)
                                     }
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.bordered)
+                                .accessibilityLabel("Open citation: \(source.snippet)")
                             } else {
                                 Text("Uncited")
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(.primary)
                             }
                         }
                     }
@@ -205,13 +267,13 @@ struct TemplatesView: View {
                         .font(.headline)
                     Text(result.documentNames.isEmpty ? "All ready documents" : result.documentNames.joined(separator: ", "))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
                 }
                 Spacer()
                 Text(result.createdAt.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
             }
 
             HStack(spacing: 10) {
@@ -221,7 +283,7 @@ struct TemplatesView: View {
             }
         }
         .padding()
-        .background(.thinMaterial)
+        .accessiblePanel()
     }
 
     private func documentBinding(_ id: UUID) -> Binding<Bool> {
@@ -257,15 +319,16 @@ private struct MetricChip: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: systemImage)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
             Text(value)
                 .font(.caption.weight(.semibold))
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+        .accessiblePanel()
+        .accessibilityElement(children: .combine)
     }
 }

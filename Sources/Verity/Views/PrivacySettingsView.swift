@@ -11,12 +11,12 @@ struct PrivacySettingsView: View {
                 Toggle("Telemetry", isOn: settingsBinding(\.telemetryEnabled))
                 LabeledContent("Sync") {
                     Text("Not configured")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                 }
                 LabeledContent("Storage") {
                     Text(store.storageDirectory.path(percentEncoded: false))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                         .lineLimit(2)
                 }
             }
@@ -24,7 +24,7 @@ struct PrivacySettingsView: View {
             Section("Local Engine") {
                 LabeledContent("Model") {
                     Text(store.modelSettings.retrievalEngine)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                 }
                 LabeledContent("Documents indexed") {
                     Text("\(store.documents.filter { $0.status == .ready }.count)")
@@ -37,7 +37,7 @@ struct PrivacySettingsView: View {
             Section("Local Extensions") {
                 Text("OCR and semantic model adapters can be added without changing the local-first document library.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
             }
         }
         .formStyle(.grouped)
